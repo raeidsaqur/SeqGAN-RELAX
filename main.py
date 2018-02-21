@@ -1,7 +1,7 @@
 from __future__ import print_function
 from math import ceil
 import numpy as np
-import sys
+import sys,os
 import pdb
 
 import torch
@@ -12,14 +12,16 @@ import generator
 import discriminator
 import helpers
 
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+isDebug = True
 
-CUDA = False
+CUDA = torch.cuda.is_available()
 VOCAB_SIZE = 5000
 MAX_SEQ_LEN = 20
 START_LETTER = 0
 BATCH_SIZE = 32
-MLE_TRAIN_EPOCHS = 100
-ADV_TRAIN_EPOCHS = 50
+MLE_TRAIN_EPOCHS = 100  if not isDebug else 50
+ADV_TRAIN_EPOCHS = 50 if not isDebug else 25
 POS_NEG_SAMPLES = 10000
 
 GEN_EMBEDDING_DIM = 32
@@ -37,6 +39,7 @@ def train_generator_MLE(gen, gen_opt, oracle, real_data_samples, epochs):
     """
     Max Likelihood Pretraining for the generator
     """
+    if isDebug: print(f"main.train_generator_MLE")
     for epoch in range(epochs):
         print('epoch %d : ' % (epoch + 1), end='')
         sys.stdout.flush()

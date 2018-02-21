@@ -1,6 +1,11 @@
 import torch
 from torch.autograd import Variable
 from math import ceil
+import sys, os
+
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 def prepare_generator_batch(samples, start_letter=0, gpu=False):
     """
