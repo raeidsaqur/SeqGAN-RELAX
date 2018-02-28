@@ -15,13 +15,14 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 class Generator(nn.Module):
 
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, gpu=False, oracle_init=False):
+    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, gpu=False, oracle_init=False, debug=False):
         super(Generator, self).__init__()
         self.hidden_dim = hidden_dim
         self.embedding_dim = embedding_dim
         self.max_seq_len = max_seq_len
         self.vocab_size = vocab_size
         self.gpu = gpu
+        self.debug = debug
 
         self.embeddings = nn.Embedding(vocab_size, embedding_dim)
         self.gru = nn.GRU(embedding_dim, hidden_dim)
@@ -63,10 +64,12 @@ class Generator(nn.Module):
             - samples: num_samples x max_seq_length (a sampled sequence in each row)
         """
         print(f"generator.sample(num_samples = {num_samples}, start_letter={start_letter}")
-        samples = torch.zeros(num_samples, self.max_seq_len).type(torch.LongTensor)
-
+        samples = torch.zeros(num_samples, self.max_seq_len).type(torch.LongTensor)   # shape = torch.Size([32, 20])
         h = self.init_hidden(num_samples)
-        inp = autograd.Variable(torch.LongTensor([start_letter]*num_samples))
+
+        _bt = [start_letter] * num_samples
+        _base = torch.cuda.LongTensor(_bt) if self.gpu else torch.LongTensor(_bt)
+        inp = autograd.Variable(_base)
 
         if self.gpu:
             samples = samples.cuda()
@@ -74,8 +77,13 @@ class Generator(nn.Module):
 
         for i in range(self.max_seq_len):
             out, h = self.forward(inp, h)               # out: num_samples x vocab_size
-            out = torch.multinomial(torch.exp(out), 1)  # num_samples x 1 (sampling from each row)
-            samples[:, i] = out.data
+            input = torch.exp(out)
+            if self.debug: print(f"input.size = {input.size()}")
+            out = torch.multinomial(input, 1)               # num_samples x 1 (sampling from each row)
+
+            # TODO: Fix size mismatch here
+            # out_np = out.data.cpu().numpy()
+            samples[:, i] = out.data                    #out.data.shape = torch.Size([32, 1])
 
             inp = out.view(-1)
 
