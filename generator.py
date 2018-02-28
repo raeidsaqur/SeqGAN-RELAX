@@ -1,11 +1,16 @@
 import torch
 import torch.autograd as autograd
+from torch.autograd.variable import Variable
+
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import pdb
 import math
 import torch.nn.init as init
+
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 
 class Generator(nn.Module):
@@ -40,12 +45,14 @@ class Generator(nn.Module):
         """
         Embeds input and applies GRU one token at a time (seq_len = 1)
         """
+        print(f"generator.forward(inp, hidden={hidden}")
         # input dim                                             # batch_size
         emb = self.embeddings(inp)                              # batch_size x embedding_dim
         emb = emb.view(1, -1, self.embedding_dim)               # 1 x batch_size x embedding_dim
         out, hidden = self.gru(emb, hidden)                     # 1 x batch_size x hidden_dim (out)
         out = self.gru2out(out.view(-1, self.hidden_dim))       # batch_size x vocab_size
-        out = F.log_softmax(out)
+        # out = F.log_softmax(out)
+        out = F.log_softmax(out, dim=-1)
         return out, hidden
 
     def sample(self, num_samples, start_letter=0):
@@ -55,7 +62,7 @@ class Generator(nn.Module):
         Outputs: samples, hidden
             - samples: num_samples x max_seq_length (a sampled sequence in each row)
         """
-
+        print(f"generator.sample(num_samples = {num_samples}, start_letter={start_letter}")
         samples = torch.zeros(num_samples, self.max_seq_len).type(torch.LongTensor)
 
         h = self.init_hidden(num_samples)
@@ -84,7 +91,7 @@ class Generator(nn.Module):
 
             inp should be target with <s> (start letter) prepended
         """
-
+        print(f"generator.batchNLLLoss(inp={inp}, target={target}")
         loss_fn = nn.NLLLoss()
         batch_size, seq_len = inp.size()
         inp = inp.permute(1, 0)           # seq_len x batch_size
